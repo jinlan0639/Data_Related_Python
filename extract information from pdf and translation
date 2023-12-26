@@ -57,7 +57,7 @@ def cut_sentences(content):
     return sentences
 
 ## 
-con1 = con.replace('7SSMM814 Business Risk Analytics – Lecture 6', '').replace('e.g.', 'eg').replace('\n','').replace("e .g.","")
+con1 = con.replace('e.g.', 'eg').replace('\n','').replace("e .g.","")
 
 t = cut_sentences(con1)
 
