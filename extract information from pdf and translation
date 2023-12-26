@@ -1,0 +1,123 @@
+# -*- coding: utf-8 -*-
+
+"""
+Created on Sat Dec 23 23:29:20 2023
+
+@author: Jinlan Rao
+"""
+
+#%% extract inforamtion from pdf
+
+import PyPDF2
+import os
+os.chdir(r'D:\KCL\Revision\Business Risk Analysis')
+os.getcwd()
+
+
+# Open file
+pdf_file =  open(r'D:\KCL\Revision\Business Risk Analysis\Lecture6.pdf', 'rb') # rb opens file in binary format
+
+
+# Create reader
+read_pdf = PyPDF2.PdfReader(pdf_file)
+
+# Get number of pages
+
+number_of_pages = len(read_pdf.pages)
+
+con=""
+for i in range(number_of_pages):
+    page = read_pdf.pages[i] 
+    page_content = page.extract_text()
+    con = con + page_content 
+
+
+#%% cut text into sentence
+
+def cut_sentences(content):
+    # cut point
+    end_flag = ['?', '!', '.', '？', '！', '。', '…']
+    
+    content_len = len(content)
+    sentences = []
+    tmp_char = ''
+    for idx, char in enumerate(content):
+        tmp_char += char
+
+        if (idx + 1) == content_len:
+            sentences.append(tmp_char)
+            break
+        
+        if char in end_flag:
+            next_idx = idx + 1
+            if not content[next_idx] in end_flag:
+                sentences.append(tmp_char)
+                tmp_char = ''
+    
+    return sentences
+
+## 
+con1 = con.replace('7SSMM814 Business Risk Analytics – Lecture 6', '').replace('e.g.', 'eg').replace('\n','').replace("e .g.","")
+
+t = cut_sentences(con1)
+
+for i in range(len(t)):
+    if len(t[i])==0: 
+        t.pop(i)
+
+
+
+###if we want to translate n sentence together rather than translate each sentence
+
+
+num_sen = 3
+group =  [int(i/num_sen) for i in range(len(t))]
+g_max = max(group)
+
+
+p=[]
+for n in range(g_max+1):   
+    up=max([i for i,j in enumerate(group) if j==n])
+    down=min([i for i,j in enumerate(group) if j==n])
+    p.append("".join(t[down:up]))
+
+
+
+#%%  translate into Chinese
+
+
+from openai import OpenAI
+import time
+
+client = OpenAI(api_key="******put your own api-key**************")
+
+new=[]
+
+for i in range(len(t)):
+    
+    con = "翻译" + p[i]
+    
+    chat_completion = client.chat.completions.create(
+        messages=[
+            {
+                "role": "user",
+                "content": con,
+            }
+        ],
+        model="gpt-3.5-turbo",
+    )
+    new.append(chat_completion.choices[0].message.content)
+    new1 = new
+    time.sleep(20)
+
+
+tt=[]
+for i in range(len(new)):
+    tt.append(t[i]+new[i])
+print(tt)
+
+tt_all = ''.join(tt)
+
+with open('Lec_.txt','w',encoding='utf-8') as file:
+    file.write(tt_all)
+file.close()
