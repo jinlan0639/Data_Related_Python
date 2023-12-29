@@ -1,0 +1,236 @@
+# -*- coding: utf-8 -*-
+
+"""
+Created on Sat Dec 23 23:29:20 2023
+
+@author: Jinlan Rao
+"""
+
+#%% extract inforamtion from pdf
+
+import PyPDF2
+import os
+
+os.chdir(r'D:\KCL\Revision\Business Risk Analysis')
+os.getcwd()
+
+
+# import pdf
+def import_pdf(url):
+    with open(url, 'rb') as file1:
+        read_pdf = PyPDF2.PdfReader(file1)
+        
+        # Get number of pages
+        number_of_pages = len(read_pdf.pages)
+    
+        # Get content of each page:
+        data_str=""
+        for i in range(number_of_pages):
+            page = read_pdf.pages[i] 
+            page_content = page.extract_text()
+            data_str = data_str + page_content 
+            
+    return data_str
+
+# import txt
+
+def import_txt(url):
+    #import text
+    with open(url,'r',encoding='utf-8') as file:
+        data_str = file.read()
+    return data_str
+        
+#%% replace some sentence/word
+
+# content need to replace
+
+
+# 
+def replace_str(data_str,rep_list):
+    
+    n = len(rep_list)
+    
+    for i in range(n):
+        key = list(rep_list.keys())[i]
+        value = list(rep_list.values())[i]
+        data_str = data_str.replace(key,value)
+    return data_str
+
+#%% cut text into sentence
+
+def cut_sentences(data_str):
+    # cut point
+    end_flag = ['?', '!', '.', '？', '！', '。', '…']
+    
+    content_len = len(data_str)
+    sen_list = []
+    tmp_char = ''
+    for idx, char in enumerate(data_str):
+        tmp_char += char
+
+        if (idx + 1) == content_len:
+            sen_list.append(tmp_char)
+            break
+        
+        if char in end_flag:
+            next_idx = idx + 1
+            if not data_str[next_idx] in end_flag:
+                sen_list.append(tmp_char)
+                tmp_char = ''
+                
+    for i in range(len(sen_list)):
+        if len(sen_list[i])==0: 
+            sen_list.pop(i)
+
+    return sen_list
+
+
+#%% concat sentence
+# longer list --------> shorter list : group a few sentence together to decrease the len of list
+
+def concat_sentence(data_list):
+    num_grp = 4
+    group =  [int(i/num_grp) for i in range(len(data_list))]
+    g_max = max(group)
+    print(group,g_max)
+    
+    con_sen=[]
+    for n in range(g_max+1):   
+        up = max([i for i,j in enumerate(group) if j==n])
+        down = min([i for i,j in enumerate(group) if j==n])
+        con_sen.append("".join(data_list[down:up]))
+        
+        
+    for i in range(len(con_sen)):
+        if len(con_sen[i])==0: 
+            con_sen.pop(i)
+        
+    return con_sen
+  
+ 
+#%%  translate into Chinese
+
+def translate_into_chinese(data_list):
+    
+    from openai import OpenAI
+    import time
+
+    client = OpenAI(api_key="-------------------your api key----------------------")
+    
+    translation=[]
+    mix = []
+    
+    for i in range(len(data_list)):
+        
+        con = "翻译" + data_list[i]
+        
+        chat_completion = client.chat.completions.create(
+            messages=[{"role": "user","content": con,}],
+            model="gpt-3.5-turbo",
+        )
+        con_trans = chat_completion.choices[0].message.content
+        translation.append(con_trans)
+        mix.append(data_list[i]+con_trans)
+        
+    content_str = "".join(data_list)
+    translation_str = "".join(translation)
+    mix_str = "".join(mix)
+        
+    return mix_str,content_str,translation_str
+        
+
+#%%  summary the point
+
+def summary_english(data_str,n = 10000):
+  
+    from openai import OpenAI
+    import time
+    
+    ## calcute times of summary, every time summary n character:
+    num = len(data_str)
+    
+    if num%n ==0:
+        num_w = int(num/n)
+    else:
+        num_w = int(num/n)+1
+          
+    client = OpenAI(api_key="-------------------------your api key--------------------")
+    
+    summary=[]
+    
+    for i in range(1,num,n):
+        
+        if i==num_w:
+            con = "Summary the bullet point of the text:" + data[i:-1]
+        else:
+            con = "Summary the bullet point of the text:" + data[i:i+n]
+        
+        chat_completion = client.chat.completions.create(
+            messages=[{"role": "user","content": con,}],
+            model="gpt-3.5-turbo",
+        )
+        sum_con = chat_completion.choices[0].message.content
+        summary.append(sum_con)
+        time.sleep(20)
+    
+    summary_str = "".join(summary)
+    return summary_str
+
+
+
+#%% work flow:
+
+#==================================step1: import data===================================#
+
+url= 'lecture2_chapter.txt'  #relative url
+
+data = import_txt(url)   ## format(data)=='str'
+
+
+#==================================step2: data replace==================================#
+
+rep_list={'7SSMM814 Business Risk Analytics , Lecture 5':"",'e.g.':"eg"}
+
+data_new = replace_str(data,rep_list)    ## format(data_new)=='str'
+
+
+#==================================step3: summary=======================================#
+
+data_sum =  summary_english(data_new,n = 1000)   # format(data_sum)=='str' n i
+
+len(data_sum)  # if len<10000, we can translate at one time
+
+
+#==================================step4: cut sentence =================================#
+
+## if len<10000,we can skip
+data_cut_sentence = cut_sentences(data_sum) 
+
+
+#==================================step5: translation into chinese =====================#
+
+# input need list
+mix_str,content_str,translation_str = translate_into_chinese([data_sum])
+
+
+#==================================step6: Export as TXT ================================#
+
+with open('Lec2_capture.txt','w',encoding='utf-8') as file:
+    file.write(mix_str)
+file.close()    
+    
+
+
+
+    
+
+
+    
+
+
+
+    
+
+
+
+
